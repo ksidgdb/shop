@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VOID shop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="st.css">
+</head>
+<body class="locked">
+<div class="bg" aria-hidden="true"></div>
+<div class="halftone" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="dot" aria-hidden="true"></div>
+<div class="ring" aria-hidden="true"></div>
+
+<button class="gate" id="gate" aria-label="Click to enter"><span>click to enter</span></button>
+
+<header class="nav" id="top">
+  <a class="logo" id="logo" href="#top"></a>
+  <nav aria-label="Main"><a href="#shop">Shop</a><a href="#how">How it works</a><a href="#faq">FAQ</a><a href="#contact">Contact</a></nav>
+  <div class="acts">
+    <span class="me" id="me" hidden><img id="meImg" alt=""><span id="meName"></span></span>
+    <button class="btn sm" id="loginBtn" type="button">Log in with Discord</button>
+    <button class="btn sm ghost" id="logoutBtn" type="button" hidden>Log out</button>
+  </div>
+</header>
+
+<main id="app">
+  <section id="hero">
+    <h1 class="name rv" id="name"></h1><br>
+    <p class="bubble rv" id="tagline"></p>
+    <div class="panel now rv"><small>Latest drop</small><h2 id="nowTitle"></h2><p id="nowText"></p><a class="btn" href="#shop">Shop now</a></div>
+    <div class="trust rv" id="trust"></div>
+  </section>
+
+  <section id="shop">
+    <h2 class="sec rv">Shop</h2>
+    <div class="bar rv" id="cats" role="group" aria-label="Filter by category"></div>
+    <div class="grid" id="grid" aria-live="polite"></div>
+  </section>
+
+  <section id="how">
+    <h2 class="sec rv">How buying works</h2>
+    <div class="steps" id="steps"></div>
+  </section>
+
+  <section id="faq">
+    <h2 class="sec rv">FAQ</h2>
+    <div id="faqList"></div>
+  </section>
+
+  <section id="contact">
+    <h2 class="sec rv">Questions?</h2>
+    <div class="panel contact rv">
+      <div class="who"><img class="avatar" id="avatar" alt="Shop owner"><div><b id="handle"></b><small><i class="live online" id="live"></i><span id="status"></span></small></div></div>
+      <p id="contactText"></p>
+      <div class="socials" id="socials"></div>
+    </div>
+  </section>
+</main>
+
+<footer id="foot"></footer>
+
+<div class="modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="aTitle">
+  <div class="panel auth">
+    <button class="x" id="aClose" type="button" aria-label="Close">X</button>
+    <h2 id="aTitle">Log in</h2>
+    <p>Sign in with your Discord account. No password needed. We only receive your Discord name, avatar and email.</p>
+    <button class="btn dc" id="aDiscord" type="button"><img src="https://api.iconify.design/simple-icons:discord.svg?color=white" alt="">Continue with Discord</button>
+    <p class="msg" id="aMsg" role="status"></p>
+  </div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mName">
+  <div class="panel sheet">
+    <button class="x" id="close" aria-label="Close">X</button>
+    <img id="mImg" alt="">
+    <div class="txt">
+      <h2 id="mName"></h2><div class="price" id="mPrice"></div>
+      <p id="mDesc"></p><div class="tags" id="mTags"></div>
+      <a class="btn" id="mBuy" target="_blank" rel="noopener">Buy now</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============ CONFIG: edit everything here, never the markup ============ */
+const CONFIG = {
+  shopName: "VOID",                       // giant outlined name
+  handle: "@v.o.i.d_99",
+  status: "Online now",                   // shown if discordId is empty
+  discordId: "975297395443249162",        // optional: live Online/Away/Busy status via Lanyard (must be in discord.gg/lanyard)
+  contactText: "Ask before you buy. Message me and I will reply as soon as I can.",
+  trust: [                                // strip under the hero
+    ["Instant delivery", "Files sent right after payment"],
+    ["Secure payment", "Handled by the payment site"],
+    ["Real support", "Message me anytime"]
+  ],
+  avatar: "icon.png",                   // square image
+  tagline: "Digital goods. Instant delivery.",
+  nowTitle: "New drop live",
+  nowText: "Grab it before it disappears.",
+  auth: {                                 // Discord login via Supabase (free). Empty keys = button shows "not set up"
+    supabaseUrl: "https://yolhcxwlkaoaazwxfvid.supabase.co",                   // Project URL, e.g. https://abcd1234.supabase.co
+    supabaseKey: "sb_publishable_y0rS1F4N61pEX7v0cfWk9w_LQC0RbXU",                      // "anon public" (or "publishable") key ONLY. Never the service_role / secret key
+    requireLoginToBuy: false              // true = the Buy button asks people to log in first
+  },
+  currency: "THB",                        // THB or USD
+  locale: "en-US",
+  steps: [                                // "How buying works"
+    ["Pick", "Browse the shop and open a product."],
+    ["Pay", "Buy opens a secure payment page on another site."],
+    ["Download", "Your files arrive by email right after payment."]
+  ],
+  socials: [                              // name = simple-icons slug
+    { label: "Discord",   icon: "discord",   url: "https://discord.com/" },
+    { label: "TikTok",    icon: "tiktok",    url: "https://tiktok.com/" },
+    { label: "Instagram", icon: "instagram", url: "https://instagram.com/" },
+  ],
+  faq: [
+    ["How do I get my files?", "After payment, the seller sends a download link to your email."],
+    ["Which payment methods work?", "Whatever the payment page offers, such as cards or PromptPay."],
+    ["Can I get a refund?", "Digital goods are refundable within 7 days if the file is broken. Contact me."]
+  ],
+  footer: [
+    "Terms: products are for personal use unless a commercial license is listed. No resale or redistribution.",
+    "Refunds: if a file is faulty, message me within 7 days of purchase for a fix or refund.",
+    "© VOID. All rights reserved."
+  ],
+  /* badge: "new" | "best seller" | "sold out" | "" */
+  PRODUCTS: [
+    { id: "p1", name: "Grain Preset Pack", price: 390, category: "Presets",
+      shortDesc: "12 film-grain presets.", longDesc: "Twelve black-and-white presets with manga-style contrast. Works with Lightroom and mobile.",
+      image: "wallpapers.jpg", tags: ["lightroom", "bw"], buyUrl: "https://example.com/pay/p1", badge: "best seller" },
+    { id: "p2", name: "Void Wallpapers", price: 150, category: "Wallpapers",
+      shortDesc: "20 mono wallpapers, 4K.", longDesc: "Twenty 4K wallpapers for desktop and phone, all pure black and white.",
+      image: "wallpapers.jpg", tags: ["4k", "mono"], buyUrl: "https://example.com/pay/p2", badge: "new" },
+    { id: "p3", name: "Auto Script Kit", price: 590, category: "Scripts",
+      shortDesc: "Small automation scripts.", longDesc: "A set of scripts that save time on repetitive tasks. Includes setup guide.",
+      image: "wallpapers.jpg", tags: ["script", "tools"], buyUrl: "https://example.com/pay/p3", badge: "" },
+    { id: "p4", name: "Starter Guide PDF", price: 99, category: "Guides",
+      shortDesc: "40-page PDF guide.", longDesc: "A short, practical guide with checklists. Instant PDF download.",
+      image: "wallpapers.jpg", tags: ["pdf"], buyUrl: "https://example.com/pay/p4", badge: "sold out" }
+  ]
+};
+/* ======================================================================= */
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => new Intl.NumberFormat(CONFIG.locale, { style: "currency", currency: CONFIG.currency, maximumFractionDigits: CONFIG.currency === "THB" ? 0 : 2 }).format(n);
+const P = CONFIG.PRODUCTS;
+let cat = "All", q = "", sort = "new", lastFocus = null;
+
+/* static content */
+document.title = CONFIG.shopName + " shop";
+$("#name").textContent = CONFIG.shopName; $("#name").dataset.text = CONFIG.shopName;
+$("#handle").textContent = CONFIG.handle; $("#status").textContent = CONFIG.status;
+$("#avatar").src = CONFIG.avatar; $("#tagline").textContent = CONFIG.tagline;
+$("#nowTitle").textContent = CONFIG.nowTitle; $("#nowText").textContent = CONFIG.nowText;
+$("#steps").innerHTML = CONFIG.steps.map((s, i) => `<div class="panel rv" style="--i:${i}"><h3>${esc(s[0])}</h3><p>${esc(s[1])}</p></div>`).join("");
+$("#faqList").innerHTML = CONFIG.faq.map((f, i) => `<details class="rv" style="--i:${i}"><summary>${esc(f[0])}</summary><p>${esc(f[1])}</p></details>`).join("");
+$("#socials").innerHTML = CONFIG.socials.map((s, i) => `<a class="tile rv" style="--i:${i}" href="${esc(s.url)}" target="_blank" rel="noopener"><img src="https://api.iconify.design/simple-icons:${esc(s.icon)}.svg?color=white" alt=""><span>${esc(s.label)}</span></a>`).join("");
+$("#foot").innerHTML = CONFIG.footer.map(t => `<p>${esc(t)}</p>`).join("");
+$("#logo").textContent = CONFIG.shopName; $("#contactText").textContent = CONFIG.contactText;
+$("#trust").innerHTML = CONFIG.trust.map(t => `<div><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join("");
+if (CONFIG.discordId) {                    /* live status for the contact box */
+  const L = () => fetch(`https://api.lanyard.rest/v1/users/${CONFIG.discordId}`).then(r => r.json()).then(j => {
+    if (!j.success) return;
+    const s = j.data.discord_status, u = j.data.discord_user;
+    $("#status").textContent = { online: "Online now", idle: "Away, back soon", dnd: "Busy", offline: "Offline, will reply later" }[s];
+    $("#live").className = "live " + s;
+    if (u && u.avatar) $("#avatar").src = `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128`;
+  }).catch(() => {});
+  L(); setInterval(L, 30000);
+}
+
+/* shop */
+function renderCats() {
+  const cats = ["All", ...new Set(P.map(p => p.category))];
+  $("#cats").innerHTML = cats.map(c => `<button class="chip" aria-pressed="${c === cat}" data-c="${esc(c)}">${esc(c)}</button>`).join("") +
+    `<input class="search" id="search" type="search" placeholder="Search products" aria-label="Search products" value="${esc(q)}">` +
+    `<select class="sort" id="sort" aria-label="Sort products"><option value="new">Newest</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select>`;
+  $("#sort").value = sort; $("#sort").addEventListener("change", e => { sort = e.target.value; renderGrid(); });
+  $("#search").addEventListener("input", e => { q = e.target.value.toLowerCase(); renderGrid(); });
+}
+$("#cats").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  cat = b.dataset.c; document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === b)); renderGrid();
+});
+function renderGrid() {
+  const list = P.filter(p => (cat === "All" || p.category === cat) &&
+    (p.name + p.shortDesc + p.tags.join(" ")).toLowerCase().includes(q));
+  if (sort === "low") list.sort((a, b) => a.price - b.price); if (sort === "high") list.sort((a, b) => b.price - a.price);
+  $("#grid").innerHTML = list.length ? list.map((p, i) => `
+    <button class="card tile rv${p.badge === "sold out" ? " sold" : ""}" style="--i:${i}" data-id="${esc(p.id)}">
+      ${p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ""}
+      <img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">
+      <div><h3>${esc(p.name)}</h3><p>${esc(p.shortDesc)}</p><span class="price">${money(p.price)}</span></div>
+    </button>`).join("") : `<p class="empty">Nothing matches. Try another search or category.</p>`;
+  if (document.body.classList.contains("shown")) document.querySelectorAll("#grid .rv").forEach(el => el.classList.add("in"));
+}
+$("#grid").addEventListener("click", e => {
+  const c = e.target.closest(".card"); if (!c) return;
+  const p = P.find(x => x.id === c.dataset.id); if (!p) return;
+  lastFocus = c;
+  $("#mImg").src = p.image; $("#mImg").alt = p.name;
+  $("#mName").textContent = p.name; $("#mPrice").textContent = money(p.price);
+  $("#mDesc").textContent = p.longDesc;
+  $("#mTags").innerHTML = p.tags.map(t => `<span>${esc(t)}</span>`).join("");
+  const b = $("#mBuy"), sold = p.badge === "sold out";
+  b.href = sold ? "#" : p.buyUrl; b.textContent = sold ? "Sold out" : "Buy now";
+  b.setAttribute("aria-disabled", sold);
+  $("#modal").classList.add("open"); $("#close").focus();
+});
+function closeModal() { $("#modal").classList.remove("open"); if (lastFocus) lastFocus.focus(); }
+$("#close").onclick = closeModal;
+$("#modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); });
+addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+renderCats(); renderGrid();
+
+/* accounts: Discord login (Supabase Auth) */
+const A = CONFIG.auth, sb = (A.supabaseUrl && A.supabaseKey && window.supabase) ? supabase.createClient(A.supabaseUrl, A.supabaseKey) : null;
+let user = null;
+const NOT_SET = "Login is not set up yet. Add your Supabase keys in CONFIG.auth.";
+function openAuth(note) { $("#aMsg").textContent = note || (sb ? "" : NOT_SET); $("#authModal").classList.add("open"); $("#aDiscord").focus(); }
+function closeAuth() { $("#authModal").classList.remove("open"); }
+function showUser(u) {
+  user = u || null;
+  $("#me").hidden = !user; $("#logoutBtn").hidden = !user; $("#loginBtn").hidden = !!user;
+  if (user) {
+    const md = user.user_metadata || {};
+    $("#meName").textContent = md.full_name || md.name || user.email || "Account";
+    $("#meImg").hidden = !md.avatar_url; if (md.avatar_url) $("#meImg").src = md.avatar_url;
+    closeAuth();
+  }
+}
+$("#loginBtn").onclick = () => openAuth();
+$("#logoutBtn").onclick = () => sb && sb.auth.signOut();
+$("#aClose").onclick = closeAuth;
+$("#authModal").addEventListener("click", e => { if (e.target.id === "authModal") closeAuth(); });
+addEventListener("keydown", e => { if (e.key === "Escape") closeAuth(); });
+$("#aDiscord").onclick = async () => {
+  if (!sb) { $("#aMsg").textContent = NOT_SET; return; }
+  const { error } = await sb.auth.signInWithOAuth({ provider: "discord", options: { redirectTo: location.href.split("#")[0].split("?")[0] } });
+  if (error) $("#aMsg").textContent = error.message;
+};
+if (sb) {
+  sb.auth.getSession().then(({ data }) => showUser(data.session && data.session.user));
+  sb.auth.onAuthStateChange((_e, s) => showUser(s && s.user));
+}
+$("#mBuy").addEventListener("click", e => {
+  if (A.requireLoginToBuy && sb && !user) { e.preventDefault(); closeModal(); openAuth("Log in with Discord to buy."); }
+});
+
+/* gate + staggered reveal */
+$("#gate").addEventListener("click", () => {
+  $("#gate").classList.add("out");
+  document.body.classList.remove("locked");
+  document.body.classList.add("shown");
+  document.querySelectorAll("#hero .rv").forEach((el, i) => el.style.setProperty("--i", i));
+  setTimeout(() => $("#gate").remove(), 600);
+});
+
+/* mouse effects */
+const fine = matchMedia("(hover:hover)").matches;
+if (fine) {
+  const root = document.documentElement, name = $("#name"), dot = $(".dot"), ring = $(".ring");
+  let mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
+  addEventListener("pointermove", e => {
+    mx = e.clientX; my = e.clientY;
+    root.style.setProperty("--cx", mx + "px"); root.style.setProperty("--cy", my + "px");
+    root.style.setProperty("--dx", (mx / innerWidth * 2 - 1).toFixed(3));
+    root.style.setProperty("--dy", (my / innerHeight * 2 - 1).toFixed(3));
+    const r = name.getBoundingClientRect();
+    name.style.setProperty("--hx", (mx - r.left) + "px"); name.style.setProperty("--hy", (my - r.top) + "px");
+    dot.style.transform = `translate(${mx}px,${my}px)`;
+    ring.classList.toggle("big", !!e.target.closest("a,button,input,select,summary"));
+  });
+  (function loop() {
+    rx += (mx - rx) * .16; ry += (my - ry) * .16;
+    ring.style.transform = `translate(${rx}px,${ry}px)`;
+    requestAnimationFrame(loop);
+  })();
+}
+</script>
+</body>
+</html>
